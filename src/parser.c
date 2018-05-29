@@ -1217,6 +1217,7 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
     fread(&major, sizeof(int), 1, fp);
     fread(&minor, sizeof(int), 1, fp);
     fread(&revision, sizeof(int), 1, fp);
+    // 由于版本不同，数据格式也不同，根据版本号读数据
     if ((major*10 + minor) >= 2 && major < 1000 && minor < 1000){
         fread(net->seen, sizeof(size_t), 1, fp);
     } else {
@@ -1230,6 +1231,7 @@ void load_weights_upto(network *net, char *filename, int start, int cutoff)
     for(i = start; i < net->n && i < cutoff; ++i){
         layer l = net->layers[i];
         if (l.dontload) continue;
+        // 根据不同的layer读取数据
         if(l.type == CONVOLUTIONAL || l.type == DECONVOLUTIONAL){
             load_convolutional_weights(l, fp);
         }

@@ -336,6 +336,7 @@ void do_nms(box *boxes, float **probs, int total, int classes, float thresh)
     }
 }
 
+// x, y 变成相对坐标，w,h 变成相对坐标的log
 box encode_box(box b, box anchor)
 {
     box encode;

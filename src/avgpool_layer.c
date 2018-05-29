@@ -36,7 +36,10 @@ void resize_avgpool_layer(avgpool_layer *l, int w, int h)
     l->h = h;
     l->inputs = h*w*l->c;
 }
-
+/**
+ * 输入的shape为 [batch, c, h*w] 大小的，输出 [batch, 
+ * c] 大小的，将最后的纬度的数据，取平均了 
+ */
 void forward_avgpool_layer(const avgpool_layer l, network net)
 {
     int b,i,k;
@@ -46,14 +49,17 @@ void forward_avgpool_layer(const avgpool_layer l, network net)
             int out_index = k + b*l.c;
             l.output[out_index] = 0;
             for(i = 0; i < l.h*l.w; ++i){
-                int in_index = i + l.h*l.w*(k + b*l.c);
+                int in_index = i + l.h*l.w*out_index;
                 l.output[out_index] += net.input[in_index];
             }
             l.output[out_index] /= l.h*l.w;
         }
     }
 }
-
+/**
+ * d(loss)/d(input) = d(loss)/d(output) * d(output)/d(input) = 
+ * delta * 1/(h*w) 
+ */
 void backward_avgpool_layer(const avgpool_layer l, network net)
 {
     int b,i,k;

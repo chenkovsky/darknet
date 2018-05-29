@@ -68,7 +68,11 @@ layer make_batchnorm_layer(int batch, int w, int h, int c)
 #endif
     return l;
 }
-
+/** 
+ * 因为output[*][n][*] = scale[n]* x_norm[*][n][*]. 
+ * d(loss)/d(scale) = delta * d(output)/d(scale) 
+ * scale_update[n] = sum(delta[*][n][*] * x_norm[*][n][*])
+ */
 void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size, float *scale_updates)
 {
     int i,b,f;
@@ -84,6 +88,10 @@ void backward_scale_cpu(float *x_norm, float *delta, int batch, int n, int size,
     }
 }
 
+/*
+ x_norm = (x - mean)/(sqrt(variance + epsilon))
+ d(loss)/d(mean) = sum(delta)/(sqrt(variance+ epsilon))
+*/
 void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int spatial, float *mean_delta)
 {
 
@@ -99,6 +107,11 @@ void mean_delta_cpu(float *delta, float *variance, int batch, int filters, int s
         mean_delta[i] *= (-1./sqrt(variance[i] + .00001f));
     }
 }
+
+/*
+ x_norm = (x - mean)/(sqrt(variance) + epsilon)
+ d(loss)/d(variance) = sum(delta*(x - mean))/(sqrt(variance + 0.00001)^3)*-0.5
+*/
 void  variance_delta_cpu(float *x, float *delta, float *mean, float *variance, int batch, int filters, int spatial, float *variance_delta)
 {
 
@@ -114,6 +127,11 @@ void  variance_delta_cpu(float *x, float *delta, float *mean, float *variance, i
         variance_delta[i] *= -.5 * pow(variance[i] + .00001f, (float)(-3./2.));
     }
 }
+
+/*
+ x_norm = (x - mean)/(sqrt(variance) + epsilon)
+ d(loss)/d(x) = delta / (sqrt(variance) + epsilon) + （mean_delta在x上的分量）+ (variance_delta在x上的分量)
+*/
 void normalize_delta_cpu(float *x, float *mean, float *variance, float *mean_delta, float *variance_delta, int batch, int filters, int spatial, float *delta)
 {
     int f, j, k;
@@ -142,9 +160,12 @@ void forward_batchnorm_layer(layer l, network net)
 
         scal_cpu(l.out_c, .99, l.rolling_mean, 1);
         axpy_cpu(l.out_c, .01, l.mean, 1, l.rolling_mean, 1);
+        // rolling_mean = 0.99 * rolling_mean + 0.01 * mean
         scal_cpu(l.out_c, .99, l.rolling_variance, 1);
         axpy_cpu(l.out_c, .01, l.variance, 1, l.rolling_variance, 1);
+        // rolling_variance = 0.99 * rolling_variance + 0.01 * variance
 
+        // output = (output - mean)/(sqrt(variance) + epsilon)
         normalize_cpu(l.output, l.mean, l.variance, l.batch, l.out_c, l.out_h*l.out_w);   
         copy_cpu(l.outputs*l.batch, l.output, 1, l.x_norm, 1);
     } else {
@@ -160,13 +181,19 @@ void backward_batchnorm_layer(layer l, network net)
         l.mean = l.rolling_mean;
         l.variance = l.rolling_variance;
     }
+    // 求 bias_updates
     backward_bias(l.bias_updates, l.delta, l.batch, l.out_c, l.out_w*l.out_h);
+    // 求 scale_updates
     backward_scale_cpu(l.x_norm, l.delta, l.batch, l.out_c, l.out_w*l.out_h, l.scale_updates);
-
+    // 求 x_norm 的 delta
+    // 此时的l.delta 已经是x_norm的了
     scale_bias(l.delta, l.scales, l.batch, l.out_c, l.out_h*l.out_w);
 
+    // 求 mean 的 delta
     mean_delta_cpu(l.delta, l.variance, l.batch, l.out_c, l.out_w*l.out_h, l.mean_delta);
+    // 求 variance 的 delta
     variance_delta_cpu(l.x, l.delta, l.mean, l.variance, l.batch, l.out_c, l.out_w*l.out_h, l.variance_delta);
+    // 求出input的delta
     normalize_delta_cpu(l.x, l.mean, l.variance, l.mean_delta, l.variance_delta, l.batch, l.out_c, l.out_w*l.out_h, l.delta);
     if(l.type == BATCHNORM) copy_cpu(l.outputs*l.batch, l.delta, 1, net.delta, 1);
 }

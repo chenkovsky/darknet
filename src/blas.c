@@ -91,6 +91,11 @@ void shortcut_cpu(int batch, int w1, int h1, int c1, float *add, int w2, int h2,
     }
 }
 
+/**
+ * 输入shape, [batch, filter, spatial] 
+ * 输入到mean数组，shape [filter] 
+ * 求取均值 
+ */
 void mean_cpu(float *x, int batch, int filters, int spatial, float *mean)
 {
     float scale = 1./(batch * spatial);
@@ -106,7 +111,11 @@ void mean_cpu(float *x, int batch, int filters, int spatial, float *mean)
         mean[i] *= scale;
     }
 }
-
+/**
+ * 输入x, shape: [batch, filter, spatial], 和均值mean, 
+ * shape[filter], 
+ * 输出variance shape[filter]
+ */
 void variance_cpu(float *x, float *mean, int batch, int filters, int spatial, float *variance)
 {
     float scale = 1./(batch * spatial - 1);
@@ -143,7 +152,7 @@ void l2normalize_cpu(float *x, float *dx, int batch, int filters, int spatial)
     }
 }
 
-
+// x = (x - mean)/(sqrt(variance) + 0.000001)
 void normalize_cpu(float *x, float *mean, float *variance, int batch, int filters, int spatial)
 {
     int b, f, i;
@@ -175,12 +184,14 @@ void pow_cpu(int N, float ALPHA, float *X, int INCX, float *Y, int INCY)
     for(i = 0; i < N; ++i) Y[i*INCY] = pow(X[i*INCX], ALPHA);
 }
 
+// y += alpha*x
 void axpy_cpu(int N, float ALPHA, float *X, int INCX, float *Y, int INCY)
 {
     int i;
     for(i = 0; i < N; ++i) Y[i*INCY] += ALPHA*X[i*INCX];
 }
 
+// incx步长，每个元素乘以alpha
 void scal_cpu(int N, float ALPHA, float *X, int INCX)
 {
     int i;

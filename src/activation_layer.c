@@ -41,6 +41,7 @@ void forward_activation_layer(layer l, network net)
     activate_array(l.output, l.outputs*l.batch, l.activation);
 }
 
+// activation layer 本身是没有额外的weight的
 void backward_activation_layer(layer l, network net)
 {
     gradient_array(l.output, l.outputs*l.batch, l.activation, l.delta);

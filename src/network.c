@@ -50,6 +50,7 @@ load_args get_base_args(network *net)
     return args;
 }
 
+// 加载神经网络，如果有权重，那么连权重一起加载
 network *load_network(char *cfg, char *weights, int clear)
 {
     network *net = parse_network_cfg(cfg);
@@ -87,6 +88,7 @@ void reset_rnn(network *net)
     reset_network_state(net, 0);
 }
 
+// 获得learning rate, 应该是optimizer的一部分
 float get_current_rate(network *net)
 {
     size_t batch_num = get_current_batch(net);
@@ -260,6 +262,7 @@ int get_predicted_class_network(network *net)
     return max_index(net->output, net->outputs);
 }
 
+// 貌似只是求了导
 void backward_network(network *netp)
 {
 #ifdef GPU
@@ -279,9 +282,11 @@ void backward_network(network *netp)
         }else{
             layer prev = net.layers[i-1];
             net.input = prev.output;
+            // 每一层求导后会计算出上一层应该的output的delta,
             net.delta = prev.delta;
         }
         net.index = i;
+        // 在这里会顺带计算出net.delta
         l.backward(l, net);
     }
 }

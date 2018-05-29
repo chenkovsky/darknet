@@ -135,6 +135,7 @@ void update_connected_layer(layer l, update_args a)
     float momentum = a.momentum;
     float decay = a.decay;
     int batch = a.batch;
+    // biases += biases_updates * learning_rate / batch
     axpy_cpu(l.outputs, learning_rate/batch, l.bias_updates, 1, l.biases, 1);
     scal_cpu(l.outputs, momentum, l.bias_updates, 1);
 
@@ -182,6 +183,16 @@ void backward_connected_layer(layer l, network net)
     float *a = l.delta;
     float *b = net.input;
     float *c = l.weight_updates;
+
+    /**
+     * 链式法则，其实当前l.delta表示的是d(loss)/d(output) 
+     * d(loss)/d(input), d(loss)/d(weight), d(loss)/d(bias) 
+     *   d(loss)/d(weight) = d(loss)/d(output) * d(output)/d(weight)
+     *   = l.delta * input
+     *  
+     *   d(loss)/d(input) = d(loss)/d(output) * d(output)/d(input)
+     *   = l.delta * weight
+     */
     gemm(1,0,m,n,k,1,a,m,b,n,1,c,n);
 
     m = l.batch;

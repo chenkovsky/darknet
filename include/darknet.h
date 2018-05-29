@@ -204,6 +204,23 @@ struct layer{
     int dontsave;
     int dontloadscales;
 
+    /**Temperature is a hyperparameter of LSTMs (and neural networks generally) 
+     * used to control the randomness of predictions by scaling the 
+     * logits before applying softmax. For example, in 
+     * TensorFlow’s Magenta implementation of LSTMs, temperature 
+     * represents how much to divide the logits by before computing 
+     * the softmax. When the temperature is 1, 
+     * we compute the softmax directly on the logits (the unscaled 
+     * output of earlier layers), and using a temperature of 0.6 
+     * the modelcomputes the softmax on logits / 0.6 logits, 
+     * resulting in a larger value. Performing softmax on larger 
+     * values makes the LSTM more confident (less input is needed 
+     * to activate the output layer) but also more conservative 
+     * in its samples (it is less likely to sample from unlikely 
+     * candidates). Using a higher temperature produces a softer 
+     * probability distribution over the classes, and makes the 
+     * RNN more “easily excited” by samples, resulting in 
+     * more diversity and also more mistakes. */ 
     float temperature;
     float probability;
     float scale;
@@ -437,12 +454,16 @@ typedef struct network{
     float *output;
     learning_rate_policy policy;
 
+    // theta -= learning_rate*delta,
     float learning_rate;
+    // 如果走在梯田上，delta 为 0，那么这时就要用上次的步长打个折扣，作为这次的步长。就是这个折扣
     float momentum;
+    // decay 分为 learning rate day和weight decay，似乎这里的是weight decay。为了防止过拟合。
     float decay;
     float gamma;
     float scale;
     float power;
+    // rnn 专用， 类似于lstm的序列的长度
     int time_steps;
     int step;
     int max_batches;
@@ -477,7 +498,7 @@ typedef struct network{
     tree *hierarchy;
 
     float *input;
-    float *truth;
+    float *truth; // 就是预测值
     float *delta;
     float *workspace;
     int train;

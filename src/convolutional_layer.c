@@ -407,7 +407,11 @@ void resize_convolutional_layer(convolutional_layer *l, int w, int h)
 #endif
     l->workspace_size = get_workspace_size(*l);
 }
-
+/**
+ * 输入output， shape: [bath, n, size] 
+ * 输出bias, shape: [n] 
+ * 每个数都加上 bias 
+ */
 void add_bias(float *output, float *biases, int batch, int n, int size)
 {
     int i,j,b;
@@ -420,6 +424,11 @@ void add_bias(float *output, float *biases, int batch, int n, int size)
     }
 }
 
+/**
+ * 输入 output, shape: [batch, n, size] 
+ * 输入 scales: [n] 
+ * 对于每个元素都scale 
+ */
 void scale_bias(float *output, float *scales, int batch, int n, int size)
 {
     int i,j,b;
@@ -431,7 +440,11 @@ void scale_bias(float *output, float *scales, int batch, int n, int size)
         }
     }
 }
-
+/**
+ * bias_updates, shape: [n] 
+ * delta: [batch, n, size] 因为output[.][n][.] += bias[n], 
+ * 所以bias的updates为这些output的点的delta只和
+ */
 void backward_bias(float *bias_updates, float *delta, int batch, int n, int size)
 {
     int i,b;

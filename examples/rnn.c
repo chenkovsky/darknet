@@ -21,6 +21,7 @@ unsigned char **load_files(char *filename, int *n)
     return contents;
 }
 
+// 读取所有的token，输入的文本是空格分隔的数字。
 int *read_tokenized_data(char *filename, size_t *read)
 {
     size_t size = 512;
@@ -126,6 +127,7 @@ float_pair get_seq2seq_data(char **source, char **dest, int n, int characters, s
 
 float_pair get_rnn_data(unsigned char *text, size_t *offsets, int characters, size_t len, int batch, int steps)
 {
+    // 注意这个batch，是训练时的streams
     float *x = calloc(batch * steps * characters, sizeof(float));
     float *y = calloc(batch * steps * characters, sizeof(float));
     int i,j;
@@ -133,7 +135,9 @@ float_pair get_rnn_data(unsigned char *text, size_t *offsets, int characters, si
         for(j = 0; j < steps; ++j){
             unsigned char curr = text[(offsets[i])%len];
             unsigned char next = text[(offsets[i] + 1)%len];
-
+            // 为啥不是( i * steps + j)?
+            // 现在的形状是 steps X batch X characters
+            // 看来这是对的。
             x[(j*batch + i)*characters + curr] = 1;
             y[(j*batch + i)*characters + next] = 1;
 
@@ -182,6 +186,7 @@ void train_char_rnn(char *cfgfile, char *weightfile, char *filename, int clear, 
 
     int streams = batch/steps;
     size_t *offsets = calloc(streams, sizeof(size_t));
+    // 随机从整个本文中选择一段话， 只要选择开始的offset，因为结束是固定的
     int j;
     for(j = 0; j < streams; ++j){
         offsets[j] = rand_size_t()%size;
